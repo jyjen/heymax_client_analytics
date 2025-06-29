@@ -1,0 +1,31 @@
+.nav-link {
+    color: #802eff;
+}
+
+.nav-pills .nav-link.active {
+    color: #fff;
+    background-color: #9c1cfc;
+}
+
+[class*="primary"] {
+    color: #fff;
+    background-color: #9c1cfc;
+    border-color: #9004fb;
+}
+
+[class*="primary"]:hover {
+    background-color: #7303c9;
+    border-color: #9004fb;
+}
+
+.purple-icon{
+    color: #7303c9 !important;
+}
+
+.center {
+    display: block;
+    margin-bottom: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 80%;
+}
