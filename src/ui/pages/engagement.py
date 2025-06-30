@@ -5,13 +5,13 @@ import pandas as pd
 from dash import dcc, html, Input, Output, State
 from dash.exceptions import PreventUpdate
 
-from metrics.engagement import calculate_quick_ratio, calculate_user_lifecycle_metrics
-from plot.engagement import plot_user_engagement
-from ui.components.plot_controls import country_control_card, linked_freq_date_selectors, \
+from src.metrics.engagement import calculate_quick_ratio, calculate_user_lifecycle_metrics
+from src.plot.engagement import plot_user_engagement
+from src.ui.components.plot_controls import country_control_card, linked_freq_date_selectors, \
     metric_type_control_card, plot_settings_button_collapse, signup_source_control_card, \
     user_activity_control_card
-from ui.components.generic_elements import icon_text_button
-from ui.utils.data import get_plotting_data
+from src.ui.components.generic_elements import icon_text_button
+from src.ui.utils.data import get_plotting_data
 
 dash.register_page(
     __name__,
@@ -107,8 +107,6 @@ layout = html.Div(
         plot_jumbotron
     ]
 )
-
-# TODO: add callback to disable metric type if freq = daily
 
 @dash.callback(
     Output(component_id = 'engagement-plot', component_property = 'figure'),

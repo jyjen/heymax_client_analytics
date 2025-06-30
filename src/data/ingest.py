@@ -1,3 +1,4 @@
+import logging
 import os
 import pandas as pd
 import sqlalchemy
@@ -5,9 +6,16 @@ import sqlalchemy
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
 
-load_dotenv()
+from src.config.columns import COUNTRY, EVENT_TIME, EVENT_TYPE, \
+    MILES_AMOUNT, PLATFORM, TRANSACTION_CATEGORY, USER_ID, \
+    UTM_SOURCE, VERSION_TIME
+from src.config.filepaths import RAW_DATA_FP
+from src.config.logging_config import setup_logging
 
-# TODO: KIV - might want to add a section which handles duplicated transactions
+load_dotenv()
+setup_logging()
+
+logger = logging.getLogger('ingestion_ppl_logger')
 
 def get_engine():
 
@@ -132,25 +140,28 @@ def insert_data(
     None
     """
 
-    df = pd.read_csv(
+    raw_df = pd.read_csv(
         csv_filepath,
-        parse_dates = ['event_time'],
+        parse_dates = [EVENT_TIME],
         date_format = '%Y-%m-%d %H:%M:%S.%f'
     )
 
     # prepare user dataframe
-    users_df = df[['user_id', 'utm_source', 'country', 'event_time']] \
-        .sort_values('event_time') \
-        .drop_duplicates(subset='user_id', keep='first') \
-        .rename(columns={'event_time': 'version_time'}) \
+    users_df = raw_df[[USER_ID, UTM_SOURCE, COUNTRY, EVENT_TIME]] \
+        .sort_values(EVENT_TIME) \
+        .drop_duplicates(subset = USER_ID, keep = 'first') \
+        .rename(columns = {EVENT_TIME: VERSION_TIME}) \
         .reset_index(drop=True)
 
     # check for existing users
     with engine.connect() as conn:
-        existing_users = pd.read_sql(text("SELECT user_id FROM dim_users"), conn)
+        existing_users = pd.read_sql(
+            text(f'SELECT {USER_ID} FROM dim_users'),
+            conn
+        )
 
     # select new users
-    new_users_df = users_df[~users_df['user_id'].isin(set(existing_users['user_id']))]
+    new_users_df = users_df[~users_df[USER_ID].isin(set(existing_users[USER_ID]))]
 
     # insert new users into dim_users table
     new_users_df.to_sql(
@@ -159,19 +170,29 @@ def insert_data(
         if_exists = 'append',
         index = False,
         dtype = {
-            'user_id': sqlalchemy.types.Text(),
-            'utm_source': sqlalchemy.types.Text(),
-            'country': sqlalchemy.types.Text(),
-            'version_time': sqlalchemy.types.DateTime()
+            USER_ID: sqlalchemy.types.Text(),
+            UTM_SOURCE: sqlalchemy.types.Text(),
+            COUNTRY: sqlalchemy.types.Text(),
+            VERSION_TIME: sqlalchemy.types.DateTime()
         }
     )
 
-    # TODO: pull user_id and event_time here
-        # drop duplicates
+    logger.info(f'{new_users_df.shape[0]} new users added to `dim_users` table.')
+
+    # check for existing events
+    with engine.connect() as conn:
+        existing_events = pd.read_sql(
+            text(f'SELECT {USER_ID}, {EVENT_TIME} FROM fct_events'),
+            conn
+        )
+
+    # select new events
+    existing_pairs = pd.MultiIndex.from_frame(existing_events)
+    df_pairs = pd.MultiIndex.from_frame(raw_df[[USER_ID, EVENT_TIME]])
+    df = raw_df[~df_pairs.isin(existing_pairs)].copy()
 
     # group transactions by event year and month for data loading
-    df['event_month'] = df['event_time'].dt.strftime('%Y_%m')
-
+    df['event_month'] = df[EVENT_TIME].dt.strftime('%Y_%m')
     for month, group in df.groupby('event_month'):
 
         # create new month partition table if it does not exist
@@ -181,33 +202,49 @@ def insert_data(
         )
 
         # insert new events into partition table
-        group[['event_time', 'user_id', 'event_type',
-               'transaction_category', 'miles_amount', 'platform']] \
+        group[[EVENT_TIME, USER_ID, EVENT_TYPE,
+               TRANSACTION_CATEGORY, MILES_AMOUNT, PLATFORM]] \
             .to_sql(
             f'fct_events_{month}',
             con = engine,
             if_exists = 'append',
             index = False,
             dtype = {
-                'event_time': sqlalchemy.types.DateTime(),
-                'user_id': sqlalchemy.types.Text(),
-                'event_type': sqlalchemy.types.Text(),
-                'transaction_category': sqlalchemy.types.Text(),
-                'miles_amount': sqlalchemy.types.Integer(),
-                'platform': sqlalchemy.types.Text()
+                EVENT_TIME: sqlalchemy.types.DateTime(),
+                USER_ID: sqlalchemy.types.Text(),
+                EVENT_TYPE: sqlalchemy.types.Text(),
+                TRANSACTION_CATEGORY: sqlalchemy.types.Text(),
+                MILES_AMOUNT: sqlalchemy.types.Integer(),
+                PLATFORM: sqlalchemy.types.Text()
             }
         )
+
+    logger.info(f'{df.shape[0]} new events added to `fct_events` table.')
 
 def main():
 
     """Main method for executing the ingestion pipeline."""
 
-    engine = get_engine()
-    create_tables(engine)
-    insert_data(
-        engine = engine,
-        csv_filepath = os.getenv('CSV_FP')
-    )
+    logger.info('Starting ingestion pipeline...')
+    try:
+        engine = get_engine()
+        logger.info('Database engine created successfully.')
+
+        create_tables(engine)
+
+        if not os.path.exists(RAW_DATA_FP):
+            logger.error(f'Raw CSV file not found at path: {RAW_DATA_FP}')
+            return
+
+        insert_data(
+            engine = engine,
+            csv_filepath = RAW_DATA_FP
+        )
+    except Exception as e:
+        logger.critical(
+            f'An unhandled error occurred in the data ingestion pipeline: {e}',
+            exc_info = True
+        )
 
 if __name__ == "__main__":
 

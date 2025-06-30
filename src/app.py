@@ -6,9 +6,9 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html, Input, Output
 from flask import Flask, redirect, request
 
-from ui.components.content import content
-from ui.components.sidebar import sidebar
-from ui.utils.data import get_date_selector_init_dates
+from src.ui.components.content import content
+from src.ui.components.sidebar import sidebar
+from src.ui.utils.data import get_date_selector_init_dates
 
 server = Flask(__name__)
 

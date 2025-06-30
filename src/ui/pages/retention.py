@@ -4,13 +4,13 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html, Input, Output, State
 from dash.exceptions import PreventUpdate
 
-from metrics.retention import calculate_retention
-from plot.retention import plot_user_retention
-from ui.components.plot_controls import country_control_card, linked_freq_date_selectors, \
+from src.metrics.retention import calculate_retention
+from src.plot.retention import plot_user_retention
+from src.ui.components.plot_controls import country_control_card, linked_freq_date_selectors, \
     plot_settings_button_collapse, retention_type_control_card, signup_source_control_card, \
     user_activity_control_card
-from ui.components.generic_elements import icon_text_button
-from ui.utils.data import get_plotting_data
+from src.ui.components.generic_elements import icon_text_button
+from src.ui.utils.data import get_plotting_data
 
 dash.register_page(
     __name__,

@@ -1,4 +1,4 @@
-"""This config file contains column names."""
+"""This config file contains raw data and storage table column names."""
 
 COUNTRY = 'country'
 EVENT_TIME = 'event_time'
@@ -8,3 +8,4 @@ PLATFORM = 'platform'
 TRANSACTION_CATEGORY = 'transaction_category'
 USER_ID = 'user_id'
 UTM_SOURCE = 'utm_source'
+VERSION_TIME = 'version_time'
