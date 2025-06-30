@@ -34,7 +34,7 @@ pg_ctl -D data\postgres -l data\logs\logfile start
 ```
 2. Run the dash application
 ```
-python src\app.py
+python -m src.app
 ```
 
 ## Repository Structure
