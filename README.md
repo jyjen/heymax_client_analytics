@@ -24,7 +24,7 @@ Once initial setup is complete and the data has been ingested, you can run the a
 
 1. Start the postgreSQL server (if server is not running)
 ```
-pg_ctl -D data\HeyMax -l data\logs\logfile start
+pg_ctl -D data\postgres -l data\logs\logfile start
 ```
 2. Run the dash application
 ```
